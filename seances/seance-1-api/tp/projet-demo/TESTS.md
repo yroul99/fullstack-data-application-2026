@@ -3,20 +3,20 @@
 ## Lancer la suite
 
 ```bash
-docker compose build                     # après un changement de requirements.txt ou de Dockerfile
-docker compose run --rm api pytest -v
-docker compose run --rm api pytest --cov=app --cov-report=term-missing --cov-fail-under=70
+docker compose up --build -d          # après un changement de requirements.txt ou de Dockerfile
+docker compose exec backend pytest -v
+docker compose exec backend pytest --cov=app --cov-report=term-missing --cov-fail-under=70
 ```
 
 ## Organisation
 
 | Fichier | Niveau | Contenu |
 |---|---|---|
-| `tests/conftest.py` | — | `Storage` + fixtures `storage`, `client` (dépend de `storage`), `item_velo`, `reservation_active` |
-| `tests/test_health.py` | Intégration | Sonde `/health` |
-| `tests/test_items.py` | Intégration | CRUD `items` : nominal, 422 paramétrés, 404 sur les 4 routes d'un item, filtres, `skip`/`limit`, `/items/search` |
-| `tests/test_reservations.py` | Intégration | Création, liste, consultation, annulation (200 / 404 / 409), notification mockée |
-| `tests/test_schemas.py` | Unitaire | `ReservationCreate` (dates, `extra="forbid"`), `ItemCreate`, `ItemUpdate` sans HTTP |
+| `backend/tests/conftest.py` | — | `Storage` + fixtures `storage`, `client` (dépend de `storage`), `item_velo`, `reservation_active` |
+| `backend/tests/test_health.py` | Intégration | Sonde `/health` |
+| `backend/tests/test_items.py` | Intégration | CRUD `items` : nominal, 422 paramétrés, 404 sur les 4 routes d'un item, filtres, `skip`/`limit`, `/items/search` |
+| `backend/tests/test_reservations.py` | Intégration | Création, liste, consultation, annulation (200 / 404 / 409), notification mockée |
+| `backend/tests/test_schemas.py` | Unitaire | `ReservationCreate` (dates, `extra="forbid"`), `ItemCreate`, `ItemUpdate` sans HTTP |
 
 72 tests, couverture **99 %**. La seule ligne non couverte est le corps de
 `envoyer_notification_annulation` : elle est toujours remplacée par un `Mock` dans les tests,
