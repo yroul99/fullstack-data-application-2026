@@ -5,9 +5,12 @@ from app.schemas.item import ItemCreate, ItemRead, ItemUpdate
 router = APIRouter(prefix="/items", tags=["items"])
 
 FAKE_DB: dict[int, dict] = {}
-_next_id = 1
 
 NOT_FOUND = {404: {"description": "Item inexistant"}}
+
+
+def _next_id() -> int:
+    return max(FAKE_DB, default=0) + 1
 
 
 def _get_or_404(item_id: int) -> dict:
@@ -71,10 +74,9 @@ def get_item(item_id: int = Path(ge=1)):
     description="Crée un item et lui attribue un identifiant. Les champs inconnus sont refusés.",
 )
 def create_item(payload: ItemCreate):
-    global _next_id
-    item = {"id": _next_id, **payload.model_dump()}
-    FAKE_DB[_next_id] = item
-    _next_id += 1
+    item_id = _next_id()
+    item = {"id": item_id, **payload.model_dump()}
+    FAKE_DB[item_id] = item
     return item
 
 
