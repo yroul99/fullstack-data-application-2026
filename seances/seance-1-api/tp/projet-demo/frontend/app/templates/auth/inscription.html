@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription — GearShare{% endblock %}
+
+{% block content %}
+<h1>Créer un compte</h1>
+
+{% if erreurs %}
+  <div class="alerte alerte-erreur">
+    <ul>
+      {% for erreur in erreurs %}
+        <li>{{ erreur }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<form method="post" action="/inscription">
+  <label for="email">Email</label>
+  <input type="email" id="email" name="email" autocomplete="username"
+         value="{{ saisie.email if saisie else '' }}" required>
+  <label for="display_name">Nom affiché</label>
+  <input type="text" id="display_name" name="display_name"
+         value="{{ saisie.display_name if saisie else '' }}" required minlength="2" maxlength="80">
+  <label for="password">Mot de passe (12 caractères minimum)</label>
+  <input type="password" id="password" name="password" autocomplete="new-password"
+         required minlength="12" maxlength="128">
+  <button type="submit">Créer mon compte</button>
+</form>
+
+<p>Déjà un compte ? <a href="/connexion">Se connecter</a></p>
+{% endblock %}

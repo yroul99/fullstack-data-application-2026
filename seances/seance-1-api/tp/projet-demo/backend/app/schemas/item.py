@@ -8,7 +8,6 @@ from app.schemas.user import OwnerRead
 class ItemCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    owner_id: int = Field(ge=1)
     titre: str = Field(min_length=3, max_length=120)
     description: str | None = Field(default=None, max_length=1000)
     tarif_jour: Decimal = Field(gt=0, max_digits=8, decimal_places=2)

@@ -1,10 +1,9 @@
 from datetime import date
 
-from app.core.exceptions import ConflitReservation, RessourceIntrouvable
+from app.core.exceptions import AccesRefuse, ConflitReservation, RessourceIntrouvable
 from app.models.reservation import Reservation
 from app.repositories.item import ItemRepository
 from app.repositories.reservation import ReservationRepository
-from app.repositories.user import UserRepository
 
 
 class ReservationService:
@@ -12,11 +11,9 @@ class ReservationService:
         self,
         reservations: ReservationRepository,
         items: ItemRepository,
-        users: UserRepository,
     ) -> None:
         self.reservations = reservations
         self.items = items
-        self.users = users
 
     def get(self, reservation_id: int) -> Reservation:
         reservation = self.reservations.get(reservation_id)
@@ -31,8 +28,8 @@ class ReservationService:
         item = self.items.get(item_id)
         if item is None:
             raise RessourceIntrouvable(f"Item {item_id} introuvable")
-        if self.users.get(borrower_id) is None:
-            raise RessourceIntrouvable(f"Utilisateur {borrower_id} introuvable")
+        if item.owner_id == borrower_id:
+            raise ConflitReservation("Vous ne pouvez pas réserver votre propre matériel")
         if not item.disponible:
             raise ConflitReservation("Ce matériel n'est pas disponible")
         if self.reservations.find_chevauchements(item_id, debut, fin):
@@ -43,8 +40,10 @@ class ReservationService:
                         date_debut=debut, date_fin=fin, statut="active")
         )
 
-    def annuler(self, reservation_id: int) -> Reservation:
+    def annuler(self, reservation_id: int, *, current_user_id: int) -> Reservation:
         reservation = self.get(reservation_id)
+        if current_user_id not in (reservation.borrower_id, reservation.item.owner_id):
+            raise AccesRefuse("Seuls l'emprunteur et le propriétaire peuvent annuler cette réservation")
         if reservation.statut != "active":
             raise ConflitReservation("Seule une réservation active peut être annulée")
         reservation.statut = "annulee"

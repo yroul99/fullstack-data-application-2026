@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response
 
-from app.api.deps import get_item_service
+from app.api.deps import CurrentUser, get_item_service
 from app.models.item import Item
 from app.schemas.item import ItemCreate, ItemRead, ItemUpdate
 from app.services.item import ItemService
@@ -63,8 +63,8 @@ def get_item(service: ItemServiceDep, item_id: int = Path(ge=1)) -> Item:
     summary="Publier un item",
     description="Crée un item et lui attribue un identifiant. Les champs inconnus sont refusés.",
 )
-def create_item(payload: ItemCreate, service: ItemServiceDep) -> Item:
-    return service.create(payload.model_dump())
+def create_item(payload: ItemCreate, current_user: CurrentUser, service: ItemServiceDep) -> Item:
+    return service.create(payload.model_dump(), owner_id=current_user.id)
 
 
 @router.put(
@@ -74,8 +74,10 @@ def create_item(payload: ItemCreate, service: ItemServiceDep) -> Item:
     description="Remplace **tous** les champs. Un champ omis reprend sa valeur par défaut.",
     responses=NOT_FOUND,
 )
-def replace_item(payload: ItemCreate, service: ItemServiceDep, item_id: int = Path(ge=1)) -> Item:
-    return service.update(item_id, payload.model_dump())
+def replace_item(
+    payload: ItemCreate, current_user: CurrentUser, service: ItemServiceDep, item_id: int = Path(ge=1)
+) -> Item:
+    return service.update(item_id, payload.model_dump(), current_user_id=current_user.id)
 
 
 @router.patch(
@@ -85,8 +87,12 @@ def replace_item(payload: ItemCreate, service: ItemServiceDep, item_id: int = Pa
     description="Ne modifie que les champs réellement transmis ; les autres sont laissés intacts.",
     responses=NOT_FOUND,
 )
-def update_item(payload: ItemUpdate, service: ItemServiceDep, item_id: int = Path(ge=1)) -> Item:
-    return service.update(item_id, payload.model_dump(exclude_unset=True))
+def update_item(
+    payload: ItemUpdate, current_user: CurrentUser, service: ItemServiceDep, item_id: int = Path(ge=1)
+) -> Item:
+    return service.update(
+        item_id, payload.model_dump(exclude_unset=True), current_user_id=current_user.id
+    )
 
 
 @router.delete(
@@ -97,5 +103,5 @@ def update_item(payload: ItemUpdate, service: ItemServiceDep, item_id: int = Pat
     description="Supprime l'item. Réponse sans corps.",
     responses={204: {"description": "Item supprimé"}, **NOT_FOUND},
 )
-def delete_item(service: ItemServiceDep, item_id: int = Path(ge=1)) -> None:
-    service.delete(item_id)
+def delete_item(current_user: CurrentUser, service: ItemServiceDep, item_id: int = Path(ge=1)) -> None:
+    service.delete(item_id, current_user_id=current_user.id)

@@ -42,8 +42,10 @@
       {% endfor %}
     </tbody>
   </table>
-{% else %}
+{% elif request.cookies.get("access_token") %}
   <p>Aucune réservation pour le moment.</p>
+{% else %}
+  <p><a href="/connexion?suivant=/items/{{ item.id }}">Connectez-vous</a> pour voir les réservations et réserver.</p>
 {% endif %}
 
 <h2>Réserver</h2>

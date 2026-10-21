@@ -24,7 +24,7 @@ class ItemRepository:
             stmt = stmt.where(Item.titre.ilike(f"%{q}%"))
         if disponible is not None:
             stmt = stmt.where(Item.disponible == disponible)
-        stmt = stmt.order_by(Item.created_at.desc()).offset(skip).limit(limit)
+        stmt = stmt.order_by(Item.created_at.desc(), Item.id.desc()).offset(skip).limit(limit)
         return list(self.db.scalars(stmt))
 
     def add(self, item: Item) -> Item:

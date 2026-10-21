@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query
 
-from app.api.deps import get_reservation_service
+from app.api.deps import CurrentUser, get_reservation_service
 from app.models.reservation import Reservation
 from app.schemas.reservation import ReservationCreate, ReservationRead, ReservationUpdate
 from app.services.reservation import ReservationService
@@ -21,6 +21,7 @@ ReservationServiceDep = Annotated[ReservationService, Depends(get_reservation_se
     description="Filtrable par `item_id`, paginé par `skip` et `limit` (plafonné à 100).",
 )
 def list_reservations(
+    current_user: CurrentUser,
     service: ReservationServiceDep,
     item_id: int | None = Query(default=None, ge=1),
     skip: int = Query(default=0, ge=0),
@@ -44,10 +45,12 @@ def list_reservations(
         422: {"description": "Dates incohérentes ou champ invalide"},
     },
 )
-def create_reservation(payload: ReservationCreate, service: ReservationServiceDep) -> Reservation:
+def create_reservation(
+    payload: ReservationCreate, current_user: CurrentUser, service: ReservationServiceDep
+) -> Reservation:
     return service.creer(
         item_id=payload.item_id,
-        borrower_id=payload.borrower_id,
+        borrower_id=current_user.id,
         debut=payload.date_debut,
         fin=payload.date_fin,
     )
@@ -59,7 +62,9 @@ def create_reservation(payload: ReservationCreate, service: ReservationServiceDe
     summary="Consulter une réservation",
     responses=NOT_FOUND,
 )
-def get_reservation(service: ReservationServiceDep, reservation_id: int = Path(ge=1)) -> Reservation:
+def get_reservation(
+    current_user: CurrentUser, service: ReservationServiceDep, reservation_id: int = Path(ge=1)
+) -> Reservation:
     return service.get(reservation_id)
 
 
@@ -71,6 +76,9 @@ def get_reservation(service: ReservationServiceDep, reservation_id: int = Path(g
     responses={**NOT_FOUND, 409: {"description": "Réservation déjà annulée ou terminée"}},
 )
 def update_reservation(
-    payload: ReservationUpdate, service: ReservationServiceDep, reservation_id: int = Path(ge=1)
+    payload: ReservationUpdate,
+    current_user: CurrentUser,
+    service: ReservationServiceDep,
+    reservation_id: int = Path(ge=1),
 ) -> Reservation:
-    return service.annuler(reservation_id)
+    return service.annuler(reservation_id, current_user_id=current_user.id)

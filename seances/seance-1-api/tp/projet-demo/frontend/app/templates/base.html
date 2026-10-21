@@ -11,6 +11,13 @@
     <nav>
       <a href="/" class="logo">GearShare</a>
       <a href="/items">Objets</a>
+      {% if request.cookies.get("access_token") %}
+        <form method="post" action="/deconnexion">
+          <button type="submit">Se déconnecter</button>
+        </form>
+      {% else %}
+        <a href="/connexion">Se connecter</a>
+      {% endif %}
     </nav>
   </header>
   <main>
