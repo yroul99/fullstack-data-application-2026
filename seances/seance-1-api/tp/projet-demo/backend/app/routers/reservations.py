@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Path, Query
 
 from app.exceptions import ReservationConflict
-from app.schemas.reservation import ReservationCreate, ReservationRead
+from app.schemas.reservation import ReservationCreate, ReservationRead, ReservationUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -101,3 +101,14 @@ def cancel_reservation(reservation_id: int = Path(ge=1)):
         # Décision : la notification est accessoire, elle ne doit pas faire échouer l'annulation.
         logger.exception("Échec de la notification d'annulation %s", reservation_id)
     return reservation
+
+
+@router.patch(
+    "/{reservation_id}",
+    response_model=ReservationRead,
+    summary="Changer le statut d'une réservation",
+    description="Seul passage autorisé : `{\"statut\": \"annulee\"}`, identique à `POST /annuler`.",
+    responses={**NOT_FOUND, 409: {"description": "Réservation déjà annulée"}},
+)
+def update_reservation(payload: ReservationUpdate, reservation_id: int = Path(ge=1)):
+    return cancel_reservation(reservation_id)

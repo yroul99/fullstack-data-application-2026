@@ -18,6 +18,12 @@ class ReservationCreate(BaseModel):
         return self
 
 
+class ReservationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    statut: Literal["annulee"]
+
+
 class ReservationRead(BaseModel):
     id: int
     item_id: int
