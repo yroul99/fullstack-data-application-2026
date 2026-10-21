@@ -8,6 +8,7 @@ class ReservationCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     item_id: int = Field(ge=1)
+    borrower_id: int = Field(ge=1)
     date_debut: date
     date_fin: date
 
@@ -25,8 +26,11 @@ class ReservationUpdate(BaseModel):
 
 
 class ReservationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     item_id: int
+    borrower_id: int
     date_debut: date
     date_fin: date
-    statut: Literal["active", "annulee"]
+    statut: Literal["active", "annulee", "terminee"]

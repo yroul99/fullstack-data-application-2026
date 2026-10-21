@@ -1,55 +1,32 @@
-import logging
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 
-from app.exceptions import ReservationConflict
+from app.api.deps import get_reservation_service
+from app.models.reservation import Reservation
 from app.schemas.reservation import ReservationCreate, ReservationRead, ReservationUpdate
-
-logger = logging.getLogger(__name__)
+from app.services.reservation import ReservationService
 
 router = APIRouter(prefix="/reservations", tags=["reservations"])
 
-FAKE_DB: dict[int, dict] = {}
-
 NOT_FOUND = {404: {"description": "Réservation inexistante"}}
 
-
-def _next_id() -> int:
-    return max(FAKE_DB, default=0) + 1
-
-
-def envoyer_notification_annulation(reservation_id: int) -> None:
-    """Prévient le propriétaire de l'item (e-mail, à brancher plus tard).
-
-    C'est la seule dépendance externe du router : les tests la remplacent par un `Mock`.
-    """
-    logger.info("Notification d'annulation pour la réservation %s", reservation_id)
-
-
-def _get_or_404(reservation_id: int) -> dict:
-    reservation = FAKE_DB.get(reservation_id)
-    if reservation is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Reservation {reservation_id} introuvable",
-        )
-    return reservation
+ReservationServiceDep = Annotated[ReservationService, Depends(get_reservation_service)]
 
 
 @router.get(
     "",
     response_model=list[ReservationRead],
     summary="Lister les réservations",
-    description="Filtrable par `item_id`. `limit` est plafonné à 100.",
+    description="Filtrable par `item_id`, paginé par `skip` et `limit` (plafonné à 100).",
 )
 def list_reservations(
+    service: ReservationServiceDep,
     item_id: int | None = Query(default=None, ge=1),
+    skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-):
-    reservations = list(FAKE_DB.values())
-    if item_id is not None:
-        reservations = [r for r in reservations if r["item_id"] == item_id]
-    return reservations[:limit]
+) -> list[Reservation]:
+    return service.list_reservations(item_id=item_id, skip=skip, limit=limit)
 
 
 @router.post(
@@ -61,13 +38,19 @@ def list_reservations(
         "Crée une réservation au statut `active`. "
         "`date_fin` doit être strictement postérieure à `date_debut`."
     ),
-    responses={422: {"description": "Dates incohérentes ou champ invalide"}},
+    responses={
+        404: {"description": "Item ou emprunteur inexistant"},
+        409: {"description": "Item indisponible ou créneau déjà réservé"},
+        422: {"description": "Dates incohérentes ou champ invalide"},
+    },
 )
-def create_reservation(payload: ReservationCreate):
-    reservation_id = _next_id()
-    reservation = {"id": reservation_id, **payload.model_dump(), "statut": "active"}
-    FAKE_DB[reservation_id] = reservation
-    return reservation
+def create_reservation(payload: ReservationCreate, service: ReservationServiceDep) -> Reservation:
+    return service.creer(
+        item_id=payload.item_id,
+        borrower_id=payload.borrower_id,
+        debut=payload.date_debut,
+        fin=payload.date_fin,
+    )
 
 
 @router.get(
@@ -76,39 +59,18 @@ def create_reservation(payload: ReservationCreate):
     summary="Consulter une réservation",
     responses=NOT_FOUND,
 )
-def get_reservation(reservation_id: int = Path(ge=1)):
-    return _get_or_404(reservation_id)
-
-
-@router.post(
-    "/{reservation_id}/annuler",
-    response_model=ReservationRead,
-    summary="Annuler une réservation",
-    description=(
-        "Passe le statut à `annulee` et notifie le propriétaire. L'opération n'est pas "
-        "rejouable. L'annulation est acquise même si la notification échoue."
-    ),
-    responses={**NOT_FOUND, 409: {"description": "Réservation déjà annulée"}},
-)
-def cancel_reservation(reservation_id: int = Path(ge=1)):
-    reservation = _get_or_404(reservation_id)
-    if reservation["statut"] == "annulee":
-        raise ReservationConflict(reservation_id, "Reservation déjà annulée")
-    reservation["statut"] = "annulee"
-    try:
-        envoyer_notification_annulation(reservation_id=reservation_id)
-    except Exception:
-        # Décision : la notification est accessoire, elle ne doit pas faire échouer l'annulation.
-        logger.exception("Échec de la notification d'annulation %s", reservation_id)
-    return reservation
+def get_reservation(service: ReservationServiceDep, reservation_id: int = Path(ge=1)) -> Reservation:
+    return service.get(reservation_id)
 
 
 @router.patch(
     "/{reservation_id}",
     response_model=ReservationRead,
-    summary="Changer le statut d'une réservation",
-    description="Seul passage autorisé : `{\"statut\": \"annulee\"}`, identique à `POST /annuler`.",
-    responses={**NOT_FOUND, 409: {"description": "Réservation déjà annulée"}},
+    summary="Annuler une réservation",
+    description='Seul changement autorisé : `{"statut": "annulee"}`, sur une réservation active.',
+    responses={**NOT_FOUND, 409: {"description": "Réservation déjà annulée ou terminée"}},
 )
-def update_reservation(payload: ReservationUpdate, reservation_id: int = Path(ge=1)):
-    return cancel_reservation(reservation_id)
+def update_reservation(
+    payload: ReservationUpdate, service: ReservationServiceDep, reservation_id: int = Path(ge=1)
+) -> Reservation:
+    return service.annuler(reservation_id)

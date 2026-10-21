@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.exceptions import ReservationConflict
+from app.core.exceptions import AccesRefuse, ConflitReservation, DomainError, RessourceIntrouvable
 from app.routers import items, reservations
 
 app = FastAPI(title="GearShare API", version="0.1.0")
@@ -9,12 +9,17 @@ app.include_router(items.router)
 app.include_router(reservations.router)
 
 
-@app.exception_handler(ReservationConflict)
-def reservation_conflict_handler(request: Request, exc: ReservationConflict) -> JSONResponse:
-    return JSONResponse(
-        status_code=409,
-        content={"detail": exc.message, "reservation_id": exc.reservation_id},
-    )
+STATUS_PAR_EXCEPTION: dict[type[DomainError], int] = {
+    RessourceIntrouvable: 404,
+    ConflitReservation: 409,
+    AccesRefuse: 403,
+}
+
+
+@app.exception_handler(DomainError)
+def handle_domain_error(request: Request, exc: DomainError) -> JSONResponse:
+    status: int = STATUS_PAR_EXCEPTION.get(type(exc), 400)
+    return JSONResponse(status_code=status, content={"detail": exc.message})
 
 
 @app.get(

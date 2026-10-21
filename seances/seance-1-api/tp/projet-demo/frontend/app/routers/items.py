@@ -29,6 +29,7 @@ def create_item(
     disponible: Annotated[bool, Form()] = False,
 ) -> Response:
     data = {
+        "owner_id": 1,  # TODO séance 5 : le propriétaire sera l'utilisateur connecté (jeton)
         "titre": titre,
         "description": description or None,
         "tarif_jour": tarif_jour,

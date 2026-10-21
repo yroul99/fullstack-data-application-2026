@@ -23,7 +23,8 @@ def reserver(
     date_fin: Annotated[date, Form()],
 ) -> Response:
     try:
-        api_client.create_reservation(item_id, date_debut, date_fin)
+        # TODO séance 5 : l'emprunteur sera l'utilisateur connecté (jeton)
+        api_client.create_reservation(item_id, 1, date_debut, date_fin)
     except ApiError as exc:
         if exc.status_code not in MESSAGES_RESERVATION:
             raise  # 404, 503... : le gestionnaire global s'en charge

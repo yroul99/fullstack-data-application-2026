@@ -51,11 +51,18 @@ class ApiClient:
     def list_reservations(self, item_id: int) -> list[dict[str, Any]]:
         return self._send("GET", "/reservations", params={"item_id": item_id})
 
-    def create_reservation(self, item_id: int, date_debut: date, date_fin: date) -> dict[str, Any]:
+    def create_reservation(
+        self, item_id: int, borrower_id: int, date_debut: date, date_fin: date
+    ) -> dict[str, Any]:
         return self._send(
             "POST",
             "/reservations",
-            json={"item_id": item_id, "date_debut": date_debut.isoformat(), "date_fin": date_fin.isoformat()},
+            json={
+                "item_id": item_id,
+                "borrower_id": borrower_id,
+                "date_debut": date_debut.isoformat(),
+                "date_fin": date_fin.isoformat(),
+            },
         )
 
     def update_reservation(self, reservation_id: int, statut: str) -> dict[str, Any]:
